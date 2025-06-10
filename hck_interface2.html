@@ -43,11 +43,11 @@
     <h2>HCK - Resolver Pergunta</h2>
     <textarea id="pergunta" placeholder="Cole aqui a pergunta com as alternativas..."></textarea>
     <button onclick="analisar()">Analisar</button>
-    <div id="resposta">Resposta aparecerá aqui...</div>
+    <div id="resposta">Resposta aparecerÃ¡ aqui...</div>
   </div>
 
   <script>
-    const apiKey = "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"; // Coloque sua API Key da OpenAI aqui
+    const apiKey = "SUA_TOKEN_DO_HUGGINGFACE"; // coloque sua token da Hugging Face aqui
 
     async function analisar() {
       const pergunta = document.getElementById("pergunta").value;
@@ -56,24 +56,25 @@
       respostaDiv.innerText = "Analisando...";
 
       try {
-        const response = await fetch("https://api.openai.com/v1/chat/completions", {
+        const response = await fetch("https://api-inference.huggingface.co/models/deepseek-ai/DeepSeek-7B", {
           method: "POST",
           headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${apiKey}`
+            "Authorization": `Bearer ${apiKey}`,
+            "Content-Type": "application/json"
           },
           body: JSON.stringify({
-            model: "gpt-3.5-turbo",
-            messages: [
-              { role: "system", content: "Você é um assistente que responde questões de múltipla escolha dizendo apenas a alternativa correta (ex: 'Alternativa C.')." },
-              { role: "user", content: pergunta }
-            ]
+            inputs: pergunta
           })
         });
 
         const data = await response.json();
-        const respostaIA = data.choices[0].message.content;
-        respostaDiv.innerText = respostaIA;
+
+        if (Array.isArray(data) && data[0]?.generated_text) {
+          respostaDiv.innerText = data[0].generated_text;
+        } else {
+          respostaDiv.innerText = "Erro: resposta nÃ£o encontrada.";
+          console.log(data);
+        }
       } catch (error) {
         respostaDiv.innerText = "Erro ao consultar a IA.";
         console.error(error);
