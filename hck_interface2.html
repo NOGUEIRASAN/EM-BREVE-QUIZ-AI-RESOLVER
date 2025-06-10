@@ -2,7 +2,7 @@
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>HCK</title>
+  <title>HCK - IA Gratuita</title>
   <style>
     body {
       font-family: sans-serif;
@@ -36,48 +36,62 @@
       margin-top: 15px;
       white-space: pre-wrap;
     }
+    .loading {
+      color: #aaa;
+      font-style: italic;
+    }
   </style>
 </head>
 <body>
   <div class="container">
-    <h2>HCK - Resolver Pergunta</h2>
-    <textarea id="pergunta" placeholder="Cole aqui a pergunta com as alternativas..."></textarea>
+    <h2>HCK - Resolver Pergunta (IA Gratuita)</h2>
+    <textarea id="pergunta" placeholder="Digite sua pergunta aqui..." rows="5"></textarea>
     <button onclick="analisar()">Analisar</button>
     <div id="resposta">Resposta aparecerá aqui...</div>
   </div>
 
   <script>
-    const apiKey = "SUA_TOKEN_DO_HUGGINGFACE"; // coloque sua token da Hugging Face aqui
-
     async function analisar() {
       const pergunta = document.getElementById("pergunta").value;
       const respostaDiv = document.getElementById("resposta");
 
-      respostaDiv.innerText = "Analisando...";
+      if (!pergunta.trim()) {
+        respostaDiv.innerText = "Por favor, digite uma pergunta.";
+        return;
+      }
+
+      respostaDiv.innerHTML = "<span class='loading'>Analisando sua pergunta...</span>";
 
       try {
-        const response = await fetch("https://api-inference.huggingface.co/models/deepseek-ai/DeepSeek-7B", {
+        // Esta é uma abordagem simplificada que pode não funcionar devido a CORS
+        // Em produção, você deveria usar um backend
+        const response = await fetch("https://api.deepseek.com/v1/chat/completions", {
           method: "POST",
           headers: {
-            "Authorization": `Bearer ${apiKey}`,
-            "Content-Type": "application/json"
+            "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            inputs: pergunta
+            model: "deepseek-chat",
+            messages: [{ role: "user", content: pergunta }],
+            temperature: 0.7
           })
         });
 
         const data = await response.json();
-
-        if (Array.isArray(data) && data[0]?.generated_text) {
-          respostaDiv.innerText = data[0].generated_text;
+        
+        if (data.choices && data.choices[0].message) {
+          respostaDiv.innerText = data.choices[0].message.content;
         } else {
-          respostaDiv.innerText = "Erro: resposta não encontrada.";
-          console.log(data);
+          respostaDiv.innerText = "Não foi possível obter uma resposta. Tente novamente.";
         }
       } catch (error) {
-        respostaDiv.innerText = "Erro ao consultar a IA.";
-        console.error(error);
+        respostaDiv.innerHTML = `
+          Erro ao acessar a API. Possíveis soluções:<br><br>
+          1. Atualize a página e tente novamente<br>
+          2. Instale uma extensão para desbloquear CORS temporariamente<br>
+          3. Para uma solução permanente, você precisa implementar um backend
+        `;
+        console.error("Erro detalhado:", error);
       }
     }
   </script>
