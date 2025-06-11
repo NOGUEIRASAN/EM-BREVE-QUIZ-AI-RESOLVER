@@ -1,142 +1,230 @@
 javascript:(function() {
-    const SCRIPT_NAME = "PROVA PAULISTA AI";
-    const VERSION = "1.0";
+    const SCRIPT_NAME = "PROVA PAULISTA AI PLUS";
+    const VERSION = "2.3";
     const AUTHOR = "IGUINHO PARAGUAI";
     
-    // Verifica se está na página correta
-    if (!window.location.href.includes('prova.paulista')) {
-        alert(`${SCRIPT_NAME}\n\nVocê precisa estar na página da Prova Paulista para usar este script.`);
+    // Verificação de ambiente seguro
+    if (typeof unsafeWindow !== 'undefined' || window.self !== window.top) {
+        console.warn(`${SCRIPT_NAME}: Ambiente potencialmente inseguro detectado.`);
         return;
     }
 
-    // Carrega dependências necessárias
-    function loadDependencies() {
-        return new Promise((resolve) => {
-            if (window.jQuery) return resolve();
+    // Técnica de injeção não persistente
+    function safeInject() {
+        // Criação de elementos segura
+        const container = document.createElement('div');
+        container.id = 'ppai-container';
+        container.style.display = 'none';
+        document.documentElement.appendChild(container);
+
+        // Loader seguro de dependências
+        const loadResource = (url, type) => new Promise((resolve, reject) => {
+            const element = type === 'js' 
+                ? document.createElement('script')
+                : document.createElement('link');
             
-            const script = document.createElement('script');
-            script.src = 'https://code.jquery.com/jquery-3.6.0.min.js';
-            script.onload = resolve;
-            document.head.appendChild(script);
-        });
-    }
-
-    // Mostra notificação estilizada
-    function showNotification(message, duration = 3000) {
-        const notification = document.createElement('div');
-        notification.style = `
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            background: rgba(0, 100, 0, 0.9);
-            color: white;
-            padding: 15px 25px;
-            border-radius: 5px;
-            z-index: 99999;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-            font-family: Arial, sans-serif;
-            animation: fadeIn 0.3s;
-        `;
-        notification.innerHTML = `
-            <strong>${SCRIPT_NAME}</strong><br>
-            ${message}
-        `;
-        document.body.appendChild(notification);
-        
-        setTimeout(() => {
-            notification.style.animation = 'fadeOut 0.3s';
-            setTimeout(() => notification.remove(), 300);
-        }, duration);
-    }
-
-    // Adiciona estilos CSS
-    const style = document.createElement('style');
-    style.innerHTML = `
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
-        @keyframes fadeOut { from { opacity: 1; } to { opacity: 0; } }
-    `;
-    document.head.appendChild(style);
-
-    // Função principal que corrige as respostas
-    async function correctAnswers() {
-        await loadDependencies();
-        
-        showNotification(`Iniciando correção automática...<br>Versão ${VERSION}`);
-
-        // Aguarda o carregamento completo da página
-        await new Promise(resolve => setTimeout(resolve, 1000));
-
-        try {
-            // Encontra todas as questões
-            const questions = $('.question-container');
-            
-            if (questions.length === 0) {
-                showNotification('Nenhuma questão encontrada na página.', 5000);
-                return;
+            if (type === 'js') {
+                element.src = url;
+                element.onload = resolve;
+                element.onerror = reject;
+            } else {
+                element.rel = 'stylesheet';
+                element.href = url;
+                element.onload = resolve;
+                element.onerror = reject;
             }
-
-            let correctedCount = 0;
             
-            questions.each(function() {
-                const question = $(this);
-                const questionId = question.attr('id');
-                const questionType = question.data('type');
-                
-                // Verifica o tipo de questão e corrige de acordo
-                switch(questionType) {
-                    case 'multiple-choice':
-                        // Seleciona a primeira alternativa correta
-                        const correctOption = question.find('.option.correct').first();
-                        if (correctOption.length) {
-                            correctOption.find('input').prop('checked', true);
-                            correctedCount++;
-                        }
-                        break;
-                        
-                    case 'true-false':
-                        // Marca como verdadeiro se houver, senão falso
-                        const trueOption = question.find('.option[data-correct="true"]');
-                        if (trueOption.length) {
-                            trueOption.find('input').prop('checked', true);
-                            correctedCount++;
-                        } else {
-                            question.find('.option').first().find('input').prop('checked', true);
-                        }
-                        break;
-                        
-                    case 'fill-in-the-blank':
-                        // Preenche com a resposta correta se disponível
-                        const correctAnswer = question.data('correct-answer');
-                        if (correctAnswer) {
-                            question.find('input[type="text"]').val(correctAnswer);
-                            correctedCount++;
-                        }
-                        break;
-                        
-                    // Adicione mais tipos de questões conforme necessário
-                }
-                
-                // Dispara eventos de mudança para atualizar a UI
-                question.find('input').trigger('change');
+            container.appendChild(element);
+        });
+
+        // Interface segura
+        const createUI = () => {
+            const ui = document.createElement('div');
+            ui.id = 'ppai-ui';
+            ui.style = `
+                position: fixed;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                background: #2c3e50;
+                color: white;
+                padding: 20px;
+                border-radius: 10px;
+                z-index: 99999;
+                box-shadow: 0 5px 15px rgba(0,0,0,0.5);
+                font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                max-width: 400px;
+                text-align: center;
+            `;
+            
+            ui.innerHTML = `
+                <h2 style="margin-top:0;color:#3498db;">${SCRIPT_NAME} v${VERSION}</h2>
+                <p>Este assistente irá analisar a prova e sugerir respostas.</p>
+                <div id="ppai-status">Preparando análise...</div>
+                <button id="ppai-start" style="
+                    background: #27ae60;
+                    color: white;
+                    border: none;
+                    padding: 10px 20px;
+                    border-radius: 5px;
+                    margin-top: 15px;
+                    cursor: pointer;
+                    font-weight: bold;
+                ">Iniciar Análise</button>
+                <p style="font-size:12px;margin-bottom:0;">${AUTHOR} - Uso educacional</p>
+            `;
+            
+            document.body.appendChild(ui);
+            
+            // Remove elementos ao fechar
+            ui.querySelector('#ppai-start').addEventListener('click', () => {
+                analyzeTest();
+                ui.style.display = 'none';
             });
+        };
 
-            showNotification(`Correção concluída!<br>${correctedCount} questões ajustadas.`, 5000);
+        // Método seguro de análise
+        const analyzeTest = () => {
+            const status = document.getElementById('ppai-status');
+            status.innerHTML = 'Analisando estrutura da prova...';
             
-            // Tenta enviar automaticamente se houver botão de envio
-            setTimeout(() => {
-                const submitBtn = $('button[type="submit"]');
-                if (submitBtn.length) {
-                    showNotification('Enviando respostas automaticamente...', 2000);
-                    submitBtn.click();
+            // Técnica de polling seguro
+            const checkElements = setInterval(() => {
+                const questions = document.querySelectorAll('.question-item');
+                if (questions.length > 0) {
+                    clearInterval(checkElements);
+                    processQuestions(questions);
                 }
-            }, 2000);
-            
-        } catch (error) {
-            console.error(`${SCRIPT_NAME} Error:`, error);
-            showNotification(`Erro durante a correção:<br>${error.message}`, 5000);
-        }
-    }
+            }, 500);
+        };
 
-    // Inicia o processo
-    correctAnswers();
+        // Processamento seguro das questões
+        const processQuestions = (questions) => {
+            let processed = 0;
+            const total = questions.length;
+            
+            const processNext = (index) => {
+                if (index >= total) {
+                    showCompletion();
+                    return;
+                }
+                
+                setTimeout(() => {
+                    const question = questions[index];
+                    processQuestion(question, index);
+                    processed++;
+                    updateStatus(processed, total);
+                    processNext(index + 1);
+                }, 100);
+            };
+            
+            processNext(0);
+        };
+
+        // Processamento individual seguro
+        const processQuestion = (question, index) => {
+            // Técnicas de análise não intrusivas
+            const questionType = detectQuestionType(question);
+            
+            switch(questionType) {
+                case 'MULTIPLE_CHOICE':
+                    analyzeMultipleChoice(question);
+                    break;
+                case 'TRUE_FALSE':
+                    analyzeTrueFalse(question);
+                    break;
+                case 'FILL_BLANK':
+                    analyzeFillBlank(question);
+                    break;
+                default:
+                    console.log(`Questão ${index + 1}: Tipo não suportado`);
+            }
+        };
+
+        // Detecção segura de tipos
+        const detectQuestionType = (question) => {
+            if (question.querySelector('.multiple-choice')) return 'MULTIPLE_CHOICE';
+            if (question.querySelector('.true-false')) return 'TRUE_FALSE';
+            if (question.querySelector('.fill-blank')) return 'FILL_BLANK';
+            return 'UNKNOWN';
+        };
+
+        // Métodos de análise específicos
+        const analyzeMultipleChoice = (question) => {
+            const options = question.querySelectorAll('.option');
+            options.forEach(opt => {
+                if (opt.textContent.includes('correto') || opt.textContent.includes('certo')) {
+                    opt.style.backgroundColor = 'rgba(46, 204, 113, 0.3)';
+                    opt.style.border = '1px solid #2ecc71';
+                }
+            });
+        };
+
+        const analyzeTrueFalse = (question) => {
+            // Análise de padrões não invasiva
+            const questionText = question.querySelector('.question-text').textContent.toLowerCase();
+            const isLikelyTrue = questionText.includes('sempre') || questionText.includes('nunca');
+            
+            question.querySelectorAll('.option').forEach(opt => {
+                if ((isLikelyTrue && opt.textContent.includes('Verdadeiro')) || 
+                    (!isLikelyTrue && opt.textContent.includes('Falso'))) {
+                    opt.style.backgroundColor = 'rgba(46, 204, 113, 0.3)';
+                }
+            });
+        };
+
+        const analyzeFillBlank = (question) => {
+            // Sugestão baseada em padrões
+            const blank = question.querySelector('.blank');
+            if (blank) {
+                blank.setAttribute('placeholder', 'Sugestão: Analise o contexto...');
+                blank.style.borderColor = '#3498db';
+            }
+        };
+
+        // Atualização segura de status
+        const updateStatus = (processed, total) => {
+            const status = document.getElementById('ppai-status');
+            if (status) {
+                status.innerHTML = `Processando: ${processed}/${total} questões<br>
+                <progress value="${processed}" max="${total}" style="width:100%"></progress>`;
+            }
+        };
+
+        // Finalização segura
+        const showCompletion = () => {
+            const status = document.getElementById('ppai-status');
+            if (status) {
+                status.innerHTML = 'Análise completa!<br>Verifique as sugestões destacadas.';
+            }
+            
+            // Mostra novamente a UI após 5 segundos
+            setTimeout(() => {
+                const ui = document.getElementById('ppai-ui');
+                if (ui) {
+                    ui.style.display = 'block';
+                    status.innerHTML = 'Pronto para nova análise!';
+                    document.getElementById('ppai-start').textContent = 'Analisar Novamente';
+                }
+            }, 5000);
+        };
+
+        // Inicialização segura
+        Promise.all([
+            loadResource('https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css', 'css'),
+            loadResource('https://code.jquery.com/jquery-3.6.0.min.js', 'js')
+        ]).then(() => {
+            createUI();
+        }).catch(err => {
+            console.error(`${SCRIPT_NAME}: Erro ao carregar recursos`, err);
+            createUI(); // Cria UI mesmo sem dependências
+        });
+    };
+
+    // Verificação de segurança antes de injetar
+    if (document.readyState === 'complete') {
+        safeInject();
+    } else {
+        window.addEventListener('load', safeInject);
+    }
 })();
